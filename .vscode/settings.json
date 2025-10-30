@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.inc": "php",
+    "fcntl.h": "c",
+    "mrb_barista.h": "c"
+  }
+}
