@@ -47,6 +47,22 @@ module Barista
       @task_args = {}
     end
 
+    def detected_os
+      Barista.os
+    end
+
+    def mac?
+      detected_os == "MacOS"
+    end
+  
+    def linux?
+      detected_os == "Linux"
+    end
+
+    def windows?
+      detected_os == "Windows"
+    end
+
     def include(mod)
       self.class.include(mod)
     end
@@ -59,6 +75,10 @@ module Barista
       build
   
       @commands.each(&:execute)
+    end
+
+    def ruby_file(path)
+      RubyResolver.new(path).code
     end
 
     # possible bug or misunderstanding

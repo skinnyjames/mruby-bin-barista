@@ -19,11 +19,13 @@ module Barista
               while res = io.readline
                 on_output.call(res.chomp)
               end
+              Fiber.yield
             rescue Errno::EAGAIN => ex
               Fiber.yield
             rescue EOFError
               break
             rescue StandardError => ex
+              Fiber.yield
               puts "WTF: #{ex}"
             end
           end
