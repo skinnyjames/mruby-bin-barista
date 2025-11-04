@@ -77,6 +77,10 @@ module Barista
       @commands.each(&:execute)
     end
 
+    def ruby_file(path)
+      RubyResolver.new(path).code
+    end
+
     # possible bug or misunderstanding
     # can't pass hash to instance_exec
     def load(hash)

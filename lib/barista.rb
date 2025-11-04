@@ -1,6 +1,7 @@
 require_relative "./emittable"
 require_relative "./commands/base"
 require_relative "./commands/command"
+require_relative "./code_helpers"
 require_relative "./graph"
 require_relative "./task"
 require_relative "./registry"
