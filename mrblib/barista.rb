@@ -538,7 +538,7 @@ module Barista
     def initialize(name, path = ".", &block)
       @name = name
       @path = path
-      @block = block.nil? ? Proc.new {} : block
+      @block = block
       @files = {}
     end
 
@@ -560,6 +560,8 @@ module Barista
     # the dependent files do not exist and
     # the dependent files are newer or on par with the locked version of those files
     def active(locked = {})
+      return true if block.nil?
+
       instance_eval(&block)
 
       @files.any? do |file, time|
@@ -620,6 +622,22 @@ module Barista
       @dependencies = []
       @commands = []
       @task_args = {}
+    end
+
+    def detected_os
+      Barista.os
+    end
+
+    def mac?
+      detected_os == "MacOS"
+    end
+  
+    def linux?
+      detected_os == "Linux"
+    end
+
+    def windows?
+      detected_os == "Windows"
     end
 
     def include(mod)
@@ -1214,6 +1232,12 @@ end
 
 module Barista
   class Error < StandardError; end
+  
+  module System
+    def os
+      Barista.os
+    end
+  end
 end
 
 

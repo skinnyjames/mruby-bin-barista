@@ -10,6 +10,12 @@ require_relative "./time"
 
 module Barista
   class Error < StandardError; end
+  
+  module System
+    def os
+      Barista.os
+    end
+  end
 end
 
 

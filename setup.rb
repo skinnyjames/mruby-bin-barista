@@ -13,6 +13,6 @@ if __FILE__ == $0
     system "git clone #{repository} #{dir}"
   end
 
-  system(%Q[cd #{dir}; MRUBY_CONFIG=#{__dir__}/build_config.rb rake #{build_args.join(' ')}])
+  system(%Q[rm mrblib/barista.rb && ruby resolve.rb && cd #{dir}; MRUBY_CONFIG=#{__dir__}/build_config.rb rake #{build_args.join(' ')}])
   exit system(%Q[cd #{__dir__}; #{dir}/bin/theorize --require="mrblib/barista.rb" test])
 end
