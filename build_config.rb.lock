@@ -2,7 +2,7 @@
 mruby:
   version: 3.4.0
   release_no: 30400
-  git_commit: 2c47e84caba08e90ba4f6b0d48e28a7681e6e5a2
+  git_commit: 240412a29080f775fabf97e56fc158b7249367e1
 builds:
   host:
     https://github.com/ksss/mruby-file-stat.git:
@@ -15,11 +15,16 @@ builds:
       branch: master
       commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
       version: 0.0.1
+    https://github.com/iij/mruby-iijson.git:
+      url: https://github.com/iij/mruby-iijson.git
+      branch: master
+      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
+      version: 0.0.0
     https://github.com/skinnyjames/mruby-bin-theorem.git:
       url: https://github.com/skinnyjames/mruby-bin-theorem.git
       branch: main
-      commit: 1508f2c24c6625c2a01c8db0d8b9590c8e776f37
-      version: 0.1.0
+      commit: c595237feb88f5545b7f26a025d99f1d29ec148c
+      version: 0.2.0
     https://github.com/iij/mruby-process.git:
       url: https://github.com/iij/mruby-process.git
       branch: master
@@ -29,9 +34,4 @@ builds:
       url: https://github.com/iij/mruby-regexp-pcre.git
       branch: master
       commit: 71bd16ba59239f04aefb73bb6d46d5b581f27b1b
-      version: 0.0.0
-    https://github.com/iij/mruby-iijson.git:
-      url: https://github.com/iij/mruby-iijson.git
-      branch: master
-      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
       version: 0.0.0

@@ -5,7 +5,7 @@ module Barista
     def initialize(name, path = ".", &block)
       @name = name
       @path = path
-      @block = block.nil? ? Proc.new {} : block
+      @block = block
       @files = {}
     end
 
@@ -27,6 +27,8 @@ module Barista
     # the dependent files do not exist and
     # the dependent files are newer or on par with the locked version of those files
     def active(locked = {})
+      return true if block.nil?
+
       instance_eval(&block)
 
       @files.any? do |file, time|

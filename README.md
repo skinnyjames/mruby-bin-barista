@@ -2,7 +2,9 @@
 
 A ruby build tool to execute a dependency graph of tasks
 
-NOTE: this project is in proof-of-concept phase.  Actively accepting feedback and contributions.
+![status badge](https://github.com/skinnyjames/mruby-bin-barista/actions/workflows/test.yml/badge.svg)
+
+NOTE: this project is beta.  Actively accepting feedback and contributions.
 
 features:
 

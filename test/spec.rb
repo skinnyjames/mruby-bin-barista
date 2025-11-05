@@ -7,28 +7,31 @@ class SpecTest
 
       task "grind" do |args| 
         def build
-          command("echo 'grind #{args[:type] || 'arabica'} beans' > beans.txt")
+          @@out << "grind"
+          command("echo 'grind #{args[:type] || 'arabica'} beans' > test/tmp/beans.txt")
         end
       end
 
       task "milk" do |args|
         def build
+          @@out << "steam"
           command("echo 'steaming milk'")
-          command("echo 'milk steamed!' > milk.txt")
+          command("echo 'milk steamed!' > test/tmp/milk.txt")
         end
       end
 
       task "brew" do |args|
         dependency "milk" do
-          files "milk.txt"
+          files "test/tmp/milk.txt"
         end   
 
         dependency "grind" do
-          files "beans.txt"  
+          files "test/tmp/beans.txt"  
         end
     
         def build
           (args[:times] || 1).times do
+            @@out << "brew"
             command("echo 'drip drip drip'")
           end
 
@@ -38,7 +41,33 @@ class SpecTest
     end
   end
 
-  test "gemspec thing" do
-    puts top.execute('brew')
+  before_each do
+    `rm -Rf test/tmp`
+    `mkdir -p test/tmp`
+    @@out = []
+  end
+
+  after_each do
+    `rm -Rf test/tmp`
+  end
+
+  test "runs only what is needed" do
+    top.execute('brew')
+    expect(@@out).to include(%w[grind steam])
+    expect(@@out.last).to eql("brew")
+    
+    @@out.clear
+
+    top.execute('brew')
+    expect(@@out).to eql(%w[brew])
+
+    @@out.clear
+    
+    sleep 1
+    File.open("test/tmp/milk.txt", "w") {|io| io.puts "new" }
+    sleep 1
+
+    top.execute('brew')
+    expect(@@out).to eql(%w[steam brew])
   end
 end
