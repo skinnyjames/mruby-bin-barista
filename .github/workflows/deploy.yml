@@ -1,0 +1,52 @@
+name: deploy
+on:
+  workflow_dispatch
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby 3.1
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: build
+        run: ruby setup.rb
+      - name: test
+        run: tmp/mruby/build/host/bin/theorize --require="mrblib/barista.rb" test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-bootstrap
+          path: tmp/mruby/build/host/bin/barista
+          overwrite: true
+  publish:
+    strategy:
+      matrix:
+        platform: [linux, osx, windows]
+    needs: compile-and-test
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --shm-size=2g
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: barista-bootstrap
+      # docker build here.
+      - name: install docker
+        run: |
+          apt-get update
+          apt-get install -y docker.io
+      - name: build docker ${{matrix.platform}}
+        run: barista ${{matrix.platform}}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-${{matrix.platform}}
+          path: platforms/${{matrix.platform}}/barista
+          overwrite: true

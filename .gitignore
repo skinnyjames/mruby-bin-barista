@@ -2,3 +2,5 @@ tmp/
 beans.txt
 milk.txt
 barista.lock
+platforms/
+.DS_Store
