@@ -10,7 +10,11 @@ module Barista
       end
 
       def execute
-        cmd = parent ? "mkdir -p #{directory}" : "mdkir #{directory}"  
+        if windows?
+          cmd = "mkdir \"#{directory}\""
+        else
+          cmd = parent ? "mkdir -p #{directory}" : "mkdir #{directory}"  
+        end
 
         Command.new(cmd, **args)
           .forward_output(&on_output)

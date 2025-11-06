@@ -45,7 +45,7 @@
  */
 
 /* os detection */
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__MINGW32__)
     #define PLATFORM_WIN32
 #elif defined(__linux__) // || defined(__gnu_linux__)
     #define PLATFORM_LINUX

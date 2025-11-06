@@ -12,7 +12,7 @@ module Barista
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        IO.popen("cd #{dir} && #{command}", File::NONBLOCK | File::RDONLY) do |io|
+        IO.popen("cd #{dir}; #{command}", File::NONBLOCK | File::RDONLY) do |io|
           io.nonblock!
           loop do
             begin

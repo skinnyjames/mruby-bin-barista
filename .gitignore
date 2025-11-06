@@ -4,3 +4,4 @@ milk.txt
 barista.lock
 platforms/
 .DS_Store
+build_config.rb.lock
