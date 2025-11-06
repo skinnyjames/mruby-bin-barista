@@ -1,0 +1,74 @@
+name: deploy
+on:
+  push:
+    tags:
+    - '*'
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby 3.1
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: build
+        run: ruby setup.rb
+      - name: test
+        run: tmp/mruby/build/host/bin/theorize --require="mrblib/barista.rb" test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-bootstrap
+          path: tmp/mruby/build/host/bin/barista
+          overwrite: true
+  publish:
+    strategy:
+      matrix:
+        platform: [linux, osx, windows]
+    needs: compile-and-test
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --shm-size=2g
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: barista-bootstrap
+      # docker build here.
+      - name: install docker
+        run: |
+          apt-get update -y && apt-get install -y ca-certificates curl
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+            tee /etc/apt/sources.list.d/docker.list > /dev/null
+          apt-get update -y
+          apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+      - name: build docker ${{matrix.platform}}
+        run: export DOCKER_BUILDKIT=1 && chmod 755 barista && ./barista ${{matrix.platform}}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-${{matrix.platform}}
+          path: platforms/${{matrix.platform}}/barista*
+          overwrite: true
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: barista*
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: "barista*"

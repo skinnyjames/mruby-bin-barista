@@ -187,5 +187,6 @@ This is in POC phase, so I'd love feedback.  There are currently a lot of unhand
 
 If you have ideas please also make an issue!
 
+# gratitude
 
-
+Massive thanks to HellRok and the [Taylor](https://github.com/HellRok/Taylor) project for the beautiful build scripts.

@@ -1,0 +1,42 @@
+# Using oldstable to solve https://github.com/HellRok/Taylor/issues/1
+# Basically we want an old enough version of GLIBC to support the most linux
+# distros possible.
+FROM debian:oldstable-slim AS BUILD
+
+# Libraries are in order
+# 1. Core
+# 3. Exporting
+
+RUN \
+  apt-get update -y && \
+  apt-get upgrade -y && \
+  apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    ruby \
+    clang \
+    \
+    locales \
+    zip && \
+  apt-get clean -y && apt-get autoremove -y && \
+  \
+  sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+  dpkg-reconfigure --frontend=noninteractive locales && \
+  update-locale LANG=en_US.UTF-8
+
+WORKDIR /src
+ADD lib lib
+ADD mrblib mrblib
+ADD src src
+ADD test test
+ADD tools tools
+ADD build_config.rb .
+ADD mrbgem.rake .
+ADD resolve.rb .
+ADD setup.rb .
+
+RUN ruby setup.rb
+
+FROM scratch
+COPY --from=build /src/tmp/mruby/build/host/bin/barista /
+ENTRYPOINT ["/barista"]

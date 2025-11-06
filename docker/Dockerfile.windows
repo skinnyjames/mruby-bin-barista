@@ -1,0 +1,53 @@
+FROM debian:stable-slim as build
+
+RUN \
+  apt-get update -y && \
+  apt-get upgrade -y && \
+  apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    ruby \
+    mingw-w64 \
+    \
+    locales \
+    zip && \
+  apt-get clean -y && apt-get autoremove -y && \
+  \
+  sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+  dpkg-reconfigure --frontend=noninteractive locales && \
+  update-locale LANG=en_US.UTF-8
+
+WORKDIR /src
+ADD lib lib
+ADD mrblib mrblib
+ADD src src
+ADD test test
+ADD tools tools
+ADD mrbgem.rake .
+ADD resolve.rb .
+ADD setup.rb .
+
+COPY <<EOT build_config.rb
+MRuby::CrossBuild.new("windows") do |conf|
+  conf.toolchain :gcc
+
+  conf.cc.flags += %w[-DMRB_ARY_LENGTH_MAX=0 -DMRB_STR_LENGTH_MAX=0]
+
+  conf.host_target = "x86_64-w64-mingw32"  # required for `for_windows?` used by `mruby-socket` gem
+
+  conf.cc.command = "#{conf.host_target}-gcc-posix"
+  conf.cc.flags += %w[-O2]
+  conf.linker.command = conf.cc.command
+  conf.archiver.command = "#{conf.host_target}-gcc-ar"
+  conf.exts.executable = ".exe"
+  conf.gem github: "skinnyjames-mruby/mruby-dir-glob", canonical: true
+  conf.gem __dir__
+  conf.gembox "default"
+end
+EOT
+
+RUN ruby setup.rb
+
+FROM scratch
+COPY --from=build /src/tmp/mruby/build/windows/bin/barista.exe /
+ENTRYPOINT ["/barista"]
