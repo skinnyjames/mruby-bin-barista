@@ -2,7 +2,7 @@ MRuby::Gem::Specification.new('mruby-bin-barista') do |spec|
   spec.license = 'MIT'
   spec.author  = 'skinnyjames'
   spec.summary = 'mruby build tool'
-  spec.version = '0.2.1'
+  spec.version = '0.2.3'
   spec.add_dependency "mruby-class-ext"
   spec.add_dependency 'mruby-metaprog'
   spec.add_dependency 'mruby-file-stat'

@@ -12,7 +12,12 @@ module Barista
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        IO.popen("cd #{dir}; #{command}", File::NONBLOCK | File::RDONLY) do |io|
+        if windows?
+          cmd = "powershell.exe -Command \"cd #{dir}; #{command}\""
+        else
+          cmd = "cd #{dir}; #{command}"
+        end
+        IO.popen(cmd, File::NONBLOCK | File::RDONLY) do |io|
           io.nonblock!
           loop do
             begin
