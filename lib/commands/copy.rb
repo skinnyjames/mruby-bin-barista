@@ -11,7 +11,12 @@ module Barista
       end
 
       def execute
-        cmd = File.directory?(src) ? "cp -R #{src} #{dest}" : "cp #{src} #{dest}"  
+        if windows?
+          cmd = "Copy-Item -Path \"#{src}\" -Destination \"#{dest}\""
+          cmd += " -Recurse" if File.directory?(src)
+        else
+          cmd = File.directory?(src) ? "cp -R #{src} #{dest}" : "cp #{src} #{dest}"  
+        end
 
         Command.new(cmd, chdir: chdir, env: env)
           .forward_output(&on_output)

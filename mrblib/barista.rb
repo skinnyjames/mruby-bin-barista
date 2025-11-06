@@ -59,6 +59,22 @@ module Barista
       def description
         raise Barista::Error.new("#{self.class}#description must be implemented")
       end
+      
+      def detected_os
+        Barista.os
+      end
+
+      def mac?
+        detected_os == "MacOS"
+      end
+    
+      def linux?
+        detected_os == "Linux"
+      end
+
+      def windows?
+        detected_os == "Windows"
+      end
     end
   end
 end
@@ -77,7 +93,7 @@ module Barista
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        IO.popen("cd #{dir} && #{command}", File::NONBLOCK | File::RDONLY) do |io|
+        IO.popen("cd #{dir}; #{command}", File::NONBLOCK | File::RDONLY) do |io|
           io.nonblock!
           loop do
             begin
@@ -469,6 +485,22 @@ module Barista
       def description
         raise Barista::Error.new("#{self.class}#description must be implemented")
       end
+      
+      def detected_os
+        Barista.os
+      end
+
+      def mac?
+        detected_os == "MacOS"
+      end
+    
+      def linux?
+        detected_os == "Linux"
+      end
+
+      def windows?
+        detected_os == "Windows"
+      end
     end
   end
 end
@@ -503,7 +535,7 @@ module Barista
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        IO.popen("cd #{dir} && #{command}", File::NONBLOCK | File::RDONLY) do |io|
+        IO.popen("cd #{dir}; #{command}", File::NONBLOCK | File::RDONLY) do |io|
           io.nonblock!
           loop do
             begin
@@ -548,7 +580,12 @@ module Barista
       end
 
       def execute
-        cmd = File.directory?(src) ? "cp -R #{src} #{dest}" : "cp #{src} #{dest}"  
+        if windows?
+          cmd = "Copy-Item -Path \"#{src}\" -Destination \"#{dest}\""
+          cmd += " -Recurse" if File.directory?(src)
+        else
+          cmd = File.directory?(src) ? "cp -R #{src} #{dest}" : "cp #{src} #{dest}"  
+        end
 
         Command.new(cmd, chdir: chdir, env: env)
           .forward_output(&on_output)
@@ -571,7 +608,11 @@ module Barista
       end
 
       def execute
-        cmd = parent ? "mkdir -p #{directory}" : "mdkir #{directory}"  
+        if windows?
+          cmd = "mkdir \"#{directory}\""
+        else
+          cmd = parent ? "mkdir -p #{directory}" : "mkdir #{directory}"  
+        end
 
         Command.new(cmd, **args)
           .forward_output(&on_output)
