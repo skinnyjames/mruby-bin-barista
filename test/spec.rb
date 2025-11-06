@@ -3,12 +3,13 @@ class SpecTest
 
   let(:top) do
     spec("new-barista-project") do |config|
-      import path: "test/fixtures/gems/theorem"
-
       task "grind" do |args| 
         def build
           @@out << "grind"
-          command("echo 'grind #{args[:type] || 'arabica'} beans' > test/tmp/beans.txt")
+
+          ruby do
+            File.open("test/tmp/beans.txt", "w") { |io| io << "grind #{args[:type] || 'arabica'} beans" }
+          end
         end
       end
 
@@ -16,7 +17,10 @@ class SpecTest
         def build
           @@out << "steam"
           command("echo 'steaming milk'")
-          command("echo 'milk steamed!' > test/tmp/milk.txt")
+
+          ruby do
+            File.open("test/tmp/milk.txt", "w") { |io| io << "Milk Steamed!" }
+          end
         end
       end
 
@@ -42,13 +46,10 @@ class SpecTest
   end
 
   before_each do
-    `rm -Rf test/tmp`
-    `mkdir -p test/tmp`
-    @@out = []
-  end
+    Dir.delete("test/tmp") if Dir.exist?("test/tmp")
+    Dir.mkdir("test/tmp")
 
-  after_each do
-    `rm -Rf test/tmp`
+    @@out = []
   end
 
   test "runs only what is needed" do
@@ -64,7 +65,7 @@ class SpecTest
     @@out.clear
     
     sleep 1
-    File.open("test/tmp/milk.txt", "w") {|io| io.puts "new" }
+    File.open("test/tmp/milk.txt", "w") { |io| io.puts "new" }
     sleep 1
 
     top.execute('brew')

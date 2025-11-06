@@ -1,0 +1,46 @@
+FROM skinnyjames/mruby-cross-osx as cross
+
+WORKDIR /src
+ADD lib lib
+ADD mrblib mrblib
+ADD src src
+ADD test test
+ADD tools tools
+ADD mrbgem.rake .
+ADD resolve.rb .
+ADD setup.rb .
+
+COPY <<EOT build_config.rb
+MRuby::CrossBuild.new("osx-intel") do |conf|
+  toolchain :clang
+
+  [conf.cc, conf.linker].each do |cc|
+    cc.command = "x86_64-apple-darwin20.4-clang"
+    cc.flags += %w[-O2 -mmacosx-version-min=10.11 -stdlib=libc++]
+  end
+  conf.cc.flags += %w[-DMRB_ARY_LENGTH_MAX=0 -DMRB_STR_LENGTH_MAX=0]
+
+  conf.cxx.command = "x86_64-apple-darwin20.4-clang++"
+  conf.archiver.command = "x86_64-apple-darwin20.4-ar"
+
+  conf.build_target = "x86_64-pc-linux-gnu"
+  conf.host_target = "x86_64-apple-darwin20.4"
+  
+  conf.gem __dir__
+  conf.gembox "stdlib"
+  conf.gembox "stdlib-ext"
+  conf.gembox "stdlib-io"
+  conf.gembox "math"
+  conf.gembox "metaprog"
+
+  # Generate mrbc command
+  conf.gem :core => "mruby-bin-mrbc"
+end
+EOT
+
+ENV TARGET=osx-intel
+RUN ruby setup.rb
+
+FROM scratch
+COPY --from=cross /src/tmp/mruby/build/osx-intel/bin/barista /
+ENTRYPOINT ["/barista"]

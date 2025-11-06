@@ -1,0 +1,18 @@
+FROM skinnyjames/mruby-cross-linux as cross
+
+WORKDIR /src
+ADD lib lib
+ADD mrblib mrblib
+ADD src src
+ADD test test
+ADD tools tools
+ADD build_config.rb .
+ADD mrbgem.rake .
+ADD resolve.rb .
+ADD setup.rb .
+
+RUN ruby setup.rb
+
+FROM scratch
+COPY --from=cross /src/tmp/mruby/build/host/bin/barista /
+ENTRYPOINT ["/barista"]
