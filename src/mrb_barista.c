@@ -4,7 +4,7 @@
 #include <mruby.h>
 #include "platform.h"
 
-#ifdef PLATFORM_WIN32 || __MINGW32__
+#if defined(PLATFORM_WIN32) || defined(__MINGW32__)
 #include <winsock2.h>
 #else
 #include <fcntl.h>
@@ -14,7 +14,7 @@ mrb_value mrb_barista_os(mrb_state* mrb, mrb_value self)
 {
   return mrb_str_new_cstr(mrb, platform_os_string(platform_detect_os()));
 }
-#ifdef PLATFORM_WIN32 || __MINGW32__
+#if defined(PLATFORM_WIN32) || defined(__MINGW32__)
 mrb_value mrb_io_nonblock(mrb_state* mrb, mrb_value self)
 {
   u_long iMode = 1;
