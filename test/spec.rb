@@ -46,7 +46,10 @@ class SpecTest
   end
 
   before_each do
-    Dir.delete("test/tmp") if Dir.exist?("test/tmp")
+    if Dir.exist?("test/tmp")
+      Dir.glob("test/tmp/*") { |f| File.delete(f) }
+      Dir.delete("test/tmp") 
+    end
     Dir.mkdir("test/tmp")
 
     @@out = []
