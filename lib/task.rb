@@ -77,6 +77,22 @@ module Barista
       @commands.each(&:execute)
     end
 
+    # we might want an immediate return value from processing a template 
+    # so let's make a convience method
+    def erb(src, string: false, vars: {})
+      template_str = string ? src : File.read(src)
+      erb = ERB.new(template_str)
+
+      obj = Object.new
+      vars.each do |k, v|
+        obj.define_singleton_method(k) do
+          v
+        end
+      end
+
+      erb.result(obj)
+    end
+
     def ruby_file(path)
       RubyResolver.new(path).code
     end

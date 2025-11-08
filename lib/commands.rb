@@ -4,6 +4,7 @@ require_relative "./commands/block"
 require_relative "./commands/command"
 require_relative "./commands/copy"
 require_relative "./commands/mkdir"
+require_relative "./commands/template"
 
 module Barista
   module Commands
@@ -31,6 +32,12 @@ module Barista
 
     def ruby(name = nil, &block)
       push_command(Commands::Block.new(&block)
+        .forward_output(&on_output)
+        .forward_error(&on_error))
+    end
+
+    def template(source, dest, string: false, vars: {})
+      push_command(Commands::Template.new(source, dest, string: string, vars: vars)
         .forward_output(&on_output)
         .forward_error(&on_error))
     end
