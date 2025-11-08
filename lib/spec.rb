@@ -38,8 +38,8 @@ module Barista
                     :flags, :mrbfiles
 
       def initialize
-        @gcc = ENV.fetch("CC", "gcc")
-        @ar = ENV.fetch("AR", "ar")
+        @gcc = "gcc"
+        @ar = "ar"
         @libs = []
         @objs = []
         @includes = []

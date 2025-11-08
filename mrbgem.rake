@@ -12,5 +12,6 @@ MRuby::Gem::Specification.new('mruby-bin-barista') do |spec|
   spec.add_dependency 'mruby-bin-theorem', '> 0.1.0', github: "skinnyjames/mruby-bin-theorem", branch: "main"
   spec.add_dependency 'mruby-time'
   spec.add_dependency 'mruby-env', github: 'iij/mruby-env'
+  spec.add_dependency 'mruby-erb'
   spec.bins = ["barista"]
 end
