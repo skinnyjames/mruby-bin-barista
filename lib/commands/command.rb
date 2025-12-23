@@ -1,19 +1,22 @@
 module Barista
   module Commands
     class Command < Base
-      attr_reader :command, :chdir, :env
+      attr_reader :command, :chdir, :shell, :env
       
-      def initialize(command, chdir: nil, env: {})
+      def initialize(command, chdir: nil, shell: nil, env: {})
         @command = command
         @chdir = chdir
         @env = env
+        @shell = shell
       end
 
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        if windows?
+        if windows? && !shell
           cmd = "powershell.exe -Command \"cd #{dir}; #{command}\""
+        elsif shell
+          cmd = "#{shell} -c \"cd #{dir}; #{command}\""
         else
           cmd = "cd #{dir}; #{command}"
         end
