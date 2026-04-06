@@ -10,7 +10,7 @@ spec("docker builds") do |config|
     def build
       command("rm -rf test/tmp")
       command("mkdir -p platforms/macos-intel")
-      command("docker buildx build --platform linux/amd64,linux/arm64 --file docker/Dockerfile.osx -t skinnyjames/mruby-cross-osx:latest .")
+      command("docker buildx build --file docker/Dockerfile.osx -t skinnyjames/mruby-cross-osx:latest .")
     end
   end
 
@@ -18,7 +18,7 @@ spec("docker builds") do |config|
     def build
       command("rm -rf test/tmp")
       command("mkdir -p platforms/windows")
-      command("docker buildx build --platform linux/amd64,linux/arm64 --file docker/Dockerfile.windows -t skinnyjames/mruby-cross-windows:latest .")
+      command("docker buildx build --file docker/Dockerfile.windows -t skinnyjames/mruby-cross-windows:latest .")
     end
   end
 
