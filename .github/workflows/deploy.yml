@@ -5,8 +5,16 @@ on:
     - '*'
 jobs:
   compile-and-test:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-22.04-arm]
     runs-on: ubuntu-latest
     steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: actions/checkout@v5
       - name: Set up Ruby 3.1
         uses: ruby/setup-ruby@v1
@@ -16,14 +24,17 @@ jobs:
         run: ruby setup.rb
       - name: test
         run: tmp/mruby/build/host/bin/theorize --require="mrblib/barista.rb" test
+      - name: Publish dockerimages
+        run: tmp/mruby/build/host/bin/barista dockerpublish
       - uses: actions/upload-artifact@v4
         with:
-          name: barista-bootstrap
+          name: barista-bootstrap-${{matrix.runner}}
           path: tmp/mruby/build/host/bin/barista
           overwrite: true
   publish:
     strategy:
       matrix:
+        runner: [ubuntu-latest, ubuntu-22.04-arm]
         platform: [linux, osx, windows]
     needs: compile-and-test
     services:
@@ -32,14 +43,14 @@ jobs:
         options: --privileged --shm-size=2g
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock:ro
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.runner}}
     container:
       image: ubuntu:latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
-          name: barista-bootstrap
+          name: barista-bootstrap-${{matrix.runner}}
       # docker build here.
       - name: install docker
         run: |
@@ -57,7 +68,7 @@ jobs:
         run: export DOCKER_BUILDKIT=1 && chmod 755 barista && ./barista ${{matrix.platform}}
       - uses: actions/upload-artifact@v4
         with:
-          name: barista-${{matrix.platform}}
+          name: barista-${{matrix.platform}}-${{matrix.runner}}
           path: platforms/${{matrix.platform}}/barista*
           overwrite: true
   release:
@@ -71,9 +82,12 @@ jobs:
         pattern: barista*
     - name: zip artifacts
       run: |
-        tar -czvf barista-linux-x86.tar.gz barista-linux
-        tar -czvf barista-osx-x86.tar.gz barista-osx
-        tar -czvf barista-windows-x86.tar.gz barista-windows
+        tar -czvf barista-linux-x86.tar.gz barista-linux-ubuntu-latest
+        tar -czvf barista-osx-x86.tar.gz barista-osx-ubuntu-latest
+        tar -czvf barista-windows-x86.tar.gz barista-windows-ubuntu-latest
+        tar -czvf barista-linux-x86.tar.gz barista-linux-ubuntu-22.04-arm
+        tar -czvf barista-osx-x86.tar.gz barista-osx-ubuntu-22.04-arm
+        tar -czvf barista-windows-x86.tar.gz barista-ubuntu-22.04-arm
     - uses: ncipollo/release-action@v1
       with:
         artifacts: "barista*"

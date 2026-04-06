@@ -17,5 +17,5 @@ if __FILE__ == $0
 
   config = "#{__dir__}/build_config.rb"
 
-  exit system(%Q[ruby resolve.rb && cd #{dir} && git checkout stable && MRUBY_CONFIG=#{config} rake #{build_args.join(' ')}])
+  exit system(%Q[ruby resolve.rb && cd #{dir} && git checkout 3.4.0 && MRUBY_CONFIG=#{config} rake #{build_args.join(' ')}])
 end
