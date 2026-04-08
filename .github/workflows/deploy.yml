@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
-          name: barista-bootstrap-x86
+          name: barista-bootstrap-arm64
       # docker build here.
       - name: install docker
         run: |
@@ -78,7 +78,7 @@ jobs:
     strategy:
       matrix:
         platform: [linux, osx, windows]
-    needs: compile-and-test
+    needs: [compile-and-test, compile-and-test-arm64]
     services:
       docker:
         image: docker:dind
@@ -114,7 +114,7 @@ jobs:
           path: platforms/${{matrix.platform}}/barista*
           overwrite: true
   release:
-    needs: publish
+    needs: [publish, publish-arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: write
