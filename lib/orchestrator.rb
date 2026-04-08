@@ -46,12 +46,11 @@ module Barista
       @workers = workers
       @filter = filter.empty? ? nil : filter
       @locked = locked
-      
 
       @building = []
       @built = []
 
-      @build_list = !filter.empty? ? registry.dag(locked).filter(filter) : registry.dag(locked).nodes.dup
+      @build_list = !filter.empty? ? registry.filter(filter, locked) : registry.dag.nodes.dup
       @unblocker_fiber = nil
     end
 
@@ -154,9 +153,15 @@ module Barista
     def unblocked_queue
       unblocked = build_list.select do |name|
         task = registry[name]
-        vertex = registry.dag(locked).vertices[name]
+        vertex = registry.dag.vertices[name]
 
-        (vertex.incoming_names - built).size.zero? && 
+        incoming = task.dependencies.inject([]) do |memo, dep|
+          isactive = dep.active(locked.dig(task.name, dep.name) || {})
+          memo << dep.name if (isactive) || build_list.include?(dep.name)
+          memo
+        end
+
+        (incoming - built).size.zero? && 
           !built.include?(name) && 
             !building.include?(name)
       end

@@ -100,7 +100,7 @@ module Barista
     # possible bug or misunderstanding
     # can't pass hash to instance_exec
     def load(hash)
-      @task_args = hash
+      @task_args.merge!(hash)
       # resolver.resolve!
       unless block.nil?
         instance_exec(self) do |obj|

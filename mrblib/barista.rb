@@ -83,7 +83,7 @@ module Barista
   module Commands
     class Command < Base
       attr_reader :command, :chdir, :shell, :env
-      
+
       def initialize(command, chdir: nil, shell: nil, env: {})
         @command = command
         @chdir = chdir
@@ -115,7 +115,6 @@ module Barista
               break
             rescue StandardError => ex
               Fiber.yield
-              puts "WTF: #{ex}"
             end
           end
         end
@@ -358,6 +357,10 @@ module Barista
       vertex
     end
 
+    def upstreams(task)
+      (filter([task]) - [task]).sort
+    end
+
     def add_edge(from, to)
       return if from == to
 
@@ -533,7 +536,7 @@ module Barista
   module Commands
     class Command < Base
       attr_reader :command, :chdir, :shell, :env
-      
+
       def initialize(command, chdir: nil, shell: nil, env: {})
         @command = command
         @chdir = chdir
@@ -565,7 +568,6 @@ module Barista
               break
             rescue StandardError => ex
               Fiber.yield
-              puts "WTF: #{ex}"
             end
           end
         end
@@ -846,6 +848,7 @@ module Barista
       @path = path
       @block = block
       @files = {}
+      @tests = {}
     end
 
     def files(*list)
@@ -862,6 +865,21 @@ module Barista
       end
     end
 
+    # the dependency is missing if
+    # the file exists in the lock but
+    # isn't declared on this file
+    def missing(locked = {})
+      return true if block.nil?
+
+      instance_eval(&block)
+
+      missing_files = locked&.any? do |lfile, ltime|
+        (!lfile.nil? && @files[lfile].nil?)
+      end
+
+      !!missing_files
+    end
+
     # the dependency is active if
     # the dependent files do not exist and
     # the dependent files are newer or on par with the locked version of those files
@@ -870,7 +888,7 @@ module Barista
 
       instance_eval(&block)
 
-      @files.any? do |file, time|
+      active_files = @files.any? do |file, time|
         if !time
           true
         elsif locked[file].nil?
@@ -881,6 +899,8 @@ module Barista
           false
         end
       end
+
+      active_files
     end 
   end
 end
@@ -983,7 +1003,7 @@ module Barista
     # possible bug or misunderstanding
     # can't pass hash to instance_exec
     def load(hash)
-      @task_args = hash
+      @task_args.merge!(hash)
       # resolver.resolve!
       unless block.nil?
         instance_exec(self) do |obj|
@@ -1019,17 +1039,13 @@ module Barista
       self
     end
 
-    def dag(lock = {})
+    def dag
       graph = Graph.new
       
       tasks.dup.each do |task|
         graph.add(task.name)
 
         task.dependencies.each do |dependency|
-          unless dependency.active(lock)
-            next
-          end
-
           if inverted
             graph.add_edge(task.name, dependency.name)
           else
@@ -1050,6 +1066,53 @@ module Barista
       @inverted = false
 
       self
+    end
+
+    # given `barista cli raylib:ok=true`
+    def filter(names, lock = {})
+      lookup = to_groups
+      results = []
+
+      reduced = names.reduce do |first, second|
+        if dag.upstreams(first).include?(second)
+          first
+        else dag.upstreams(second).include?(first)
+          second
+        end
+      end
+
+      results << lookup[reduced]
+
+      stack = names.clone
+
+      while name = stack.shift
+        task = lookup[name]
+        active = false
+        intern = []
+
+        task.dependencies.each do |dep|
+          missing = dep.missing(lock.dig(task.name, dep.name) || {})
+          isactive = dep.active(lock.dig(task.name, dep.name) || {})
+
+          if missing || isactive && !lock.dig(task.name, dep.name).nil?
+            active = true
+          end
+
+          if isactive
+            intern << lookup[dep.name]
+          end
+
+          stack.unshift dep.name
+        end
+
+        if active
+          results << task
+        end
+
+        results.concat(intern)
+      end
+
+      results.map(&:name).uniq
     end
 
     def upstreams(task)
@@ -1130,12 +1193,11 @@ module Barista
       @workers = workers
       @filter = filter.empty? ? nil : filter
       @locked = locked
-      
 
       @building = []
       @built = []
 
-      @build_list = !filter.empty? ? registry.dag(locked).filter(filter) : registry.dag(locked).nodes.dup
+      @build_list = !filter.empty? ? registry.filter(filter, locked) : registry.dag.nodes.dup
       @unblocker_fiber = nil
     end
 
@@ -1238,9 +1300,15 @@ module Barista
     def unblocked_queue
       unblocked = build_list.select do |name|
         task = registry[name]
-        vertex = registry.dag(locked).vertices[name]
+        vertex = registry.dag.vertices[name]
 
-        (vertex.incoming_names - built).size.zero? && 
+        incoming = task.dependencies.inject([]) do |memo, dep|
+          isactive = dep.active(locked.dig(task.name, dep.name) || {})
+          memo << dep.name if (isactive) || build_list.include?(dep.name)
+          memo
+        end
+
+        (incoming - built).size.zero? && 
           !built.include?(name) && 
             !building.include?(name)
       end
@@ -1341,6 +1409,8 @@ module Barista
     def scan_args(str)
       parts = str.split(":")
       task = parts.shift
+      tasks = task.split(",")
+
       args = {}
 
       while part = parts.shift
@@ -1348,9 +1418,9 @@ module Barista
 
         value = ""
 
-        if v =~ /\d+/
+        if v =~ /^\d+$/
           value = v.to_i
-        elsif v =~ /\d+\.\d*/
+        elsif v =~ /^\d+\.\d*$/
           value = v.to_f
         elsif v == "true" || v == "false"
           value = (v == "true")
@@ -1361,7 +1431,9 @@ module Barista
         args[k.to_sym] = value
       end
 
-      [task, args]
+      tasks.map do |task|
+        [task, args]
+      end
     end
 
     def execute(argstr = "", locked = {})
@@ -1378,8 +1450,10 @@ module Barista
       end
 
       argstr.split(" ").each do |foo|
-        task, hash = scan_args(foo)
-        tasks[task] = hash
+        args = scan_args(foo)
+        args.each do |(task, hash)|
+          tasks[task] = hash
+        end
       end
 
       fibers = gemspecs.map do |gemspec|
@@ -1389,6 +1463,7 @@ module Barista
       end
       
       colors = [:yellow, :blue, :pink, :light_blue]
+
       registry.tasks.each do |task|
         args = tasks[task.name]
         task.load(args || {})
@@ -1403,7 +1478,9 @@ module Barista
 
       filtered = tasks.map {|k, t| registry[k].name }
 
-      orchestrator = Barista::Orchestrator.new(registry, workers: 2, locked: locked, filter: filtered)
+      workers = ENV.fetch("BARISTA_WORKERS", 2)
+
+      orchestrator = Barista::Orchestrator.new(registry, workers: workers.to_i, locked: locked, filter: filtered)
 
       orchestrator.on_run_start do
         puts "#{name} run started"
@@ -1418,15 +1495,24 @@ module Barista
       end
 
       orchestrator.on_task_succeed do |task|
-        puts "#{name}::#{task} did the damn thing".green
+        puts "#{name}::#{task} succeeded!".green
 
         registry.dependents(task).each do |dependent|
           dep = dependent.dependencies.find { |d| d.name == task }
-          dep.write(locked)
+          lock = {}
+          dep.write(lock)
+          locked[dependent.name] ||= {}
+          locked[dependent.name][dep.name] = lock
+        end
+
+        registry[task].dependencies.each do |dependency|
+          lock = {}
+          dependency.write(lock)
+          locked[task] ||= {}
+          locked[task][dependency.name] = lock
         end
 
         ::File.open("barista.lock", "w") { |io| io << locked.to_json }
-
 
         Fiber.yield
       end
@@ -1435,9 +1521,11 @@ module Barista
         ::File.open("barista.lock", "w") { |io| io << locked.to_json }
       end
 
-      # orchestrator.on_unblocked do |unblock|
-      #   puts unblock.to_s
-      # end
+      orchestrator.on_unblocked do |unblock|
+        if ENV.to_hash["LOG_LEVEL"] == "debug"
+          puts unblock.to_s
+        end
+      end
 
       fibers << Fiber.new do
         orchestrator.execute

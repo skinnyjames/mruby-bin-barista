@@ -21,6 +21,10 @@ module Barista
       vertex
     end
 
+    def upstreams(task)
+      (filter([task]) - [task]).sort
+    end
+
     def add_edge(from, to)
       return if from == to
 

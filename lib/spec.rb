@@ -81,6 +81,8 @@ module Barista
     def scan_args(str)
       parts = str.split(":")
       task = parts.shift
+      tasks = task.split(",")
+
       args = {}
 
       while part = parts.shift
@@ -88,9 +90,9 @@ module Barista
 
         value = ""
 
-        if v =~ /\d+/
+        if v =~ /^\d+$/
           value = v.to_i
-        elsif v =~ /\d+\.\d*/
+        elsif v =~ /^\d+\.\d*$/
           value = v.to_f
         elsif v == "true" || v == "false"
           value = (v == "true")
@@ -101,7 +103,9 @@ module Barista
         args[k.to_sym] = value
       end
 
-      [task, args]
+      tasks.map do |task|
+        [task, args]
+      end
     end
 
     def execute(argstr = "", locked = {})
@@ -118,8 +122,10 @@ module Barista
       end
 
       argstr.split(" ").each do |foo|
-        task, hash = scan_args(foo)
-        tasks[task] = hash
+        args = scan_args(foo)
+        args.each do |(task, hash)|
+          tasks[task] = hash
+        end
       end
 
       fibers = gemspecs.map do |gemspec|
@@ -129,6 +135,7 @@ module Barista
       end
       
       colors = [:yellow, :blue, :pink, :light_blue]
+
       registry.tasks.each do |task|
         args = tasks[task.name]
         task.load(args || {})
@@ -143,7 +150,9 @@ module Barista
 
       filtered = tasks.map {|k, t| registry[k].name }
 
-      orchestrator = Barista::Orchestrator.new(registry, workers: 2, locked: locked, filter: filtered)
+      workers = ENV.fetch("BARISTA_WORKERS", 2)
+
+      orchestrator = Barista::Orchestrator.new(registry, workers: workers.to_i, locked: locked, filter: filtered)
 
       orchestrator.on_run_start do
         puts "#{name} run started"
@@ -158,15 +167,24 @@ module Barista
       end
 
       orchestrator.on_task_succeed do |task|
-        puts "#{name}::#{task} did the damn thing".green
+        puts "#{name}::#{task} succeeded!".green
 
         registry.dependents(task).each do |dependent|
           dep = dependent.dependencies.find { |d| d.name == task }
-          dep.write(locked)
+          lock = {}
+          dep.write(lock)
+          locked[dependent.name] ||= {}
+          locked[dependent.name][dep.name] = lock
+        end
+
+        registry[task].dependencies.each do |dependency|
+          lock = {}
+          dependency.write(lock)
+          locked[task] ||= {}
+          locked[task][dependency.name] = lock
         end
 
         ::File.open("barista.lock", "w") { |io| io << locked.to_json }
-
 
         Fiber.yield
       end
@@ -175,9 +193,11 @@ module Barista
         ::File.open("barista.lock", "w") { |io| io << locked.to_json }
       end
 
-      # orchestrator.on_unblocked do |unblock|
-      #   puts unblock.to_s
-      # end
+      orchestrator.on_unblocked do |unblock|
+        if ENV.to_hash["LOG_LEVEL"] == "debug"
+          puts unblock.to_s
+        end
+      end
 
       fibers << Fiber.new do
         orchestrator.execute
