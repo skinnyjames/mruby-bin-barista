@@ -7,6 +7,7 @@ module Barista
       @path = path
       @block = block
       @files = {}
+      @tests = {}
     end
 
     def files(*list)
@@ -23,6 +24,21 @@ module Barista
       end
     end
 
+    # the dependency is missing if
+    # the file exists in the lock but
+    # isn't declared on this file
+    def missing(locked = {})
+      return true if block.nil?
+
+      instance_eval(&block)
+
+      missing_files = locked&.any? do |lfile, ltime|
+        (!lfile.nil? && @files[lfile].nil?)
+      end
+
+      !!missing_files
+    end
+
     # the dependency is active if
     # the dependent files do not exist and
     # the dependent files are newer or on par with the locked version of those files
@@ -31,7 +47,7 @@ module Barista
 
       instance_eval(&block)
 
-      @files.any? do |file, time|
+      active_files = @files.any? do |file, time|
         if !time
           true
         elsif locked[file].nil?
@@ -42,6 +58,8 @@ module Barista
           false
         end
       end
+
+      active_files
     end 
   end
 end

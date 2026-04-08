@@ -17,17 +17,13 @@ module Barista
       self
     end
 
-    def dag(lock = {})
+    def dag
       graph = Graph.new
       
       tasks.dup.each do |task|
         graph.add(task.name)
 
         task.dependencies.each do |dependency|
-          unless dependency.active(lock)
-            next
-          end
-
           if inverted
             graph.add_edge(task.name, dependency.name)
           else
@@ -48,6 +44,53 @@ module Barista
       @inverted = false
 
       self
+    end
+
+    # given `barista cli raylib:ok=true`
+    def filter(names, lock = {})
+      lookup = to_groups
+      results = []
+
+      reduced = names.reduce do |first, second|
+        if dag.upstreams(first).include?(second)
+          first
+        else dag.upstreams(second).include?(first)
+          second
+        end
+      end
+
+      results << lookup[reduced]
+
+      stack = names.clone
+
+      while name = stack.shift
+        task = lookup[name]
+        active = false
+        intern = []
+
+        task.dependencies.each do |dep|
+          missing = dep.missing(lock.dig(task.name, dep.name) || {})
+          isactive = dep.active(lock.dig(task.name, dep.name) || {})
+
+          if missing || isactive && !lock.dig(task.name, dep.name).nil?
+            active = true
+          end
+
+          if isactive
+            intern << lookup[dep.name]
+          end
+
+          stack.unshift dep.name
+        end
+
+        if active
+          results << task
+        end
+
+        results.concat(intern)
+      end
+
+      results.map(&:name).uniq
     end
 
     def upstreams(task)

@@ -5,10 +5,7 @@ on:
     - '*'
 jobs:
   compile-and-test:
-    strategy:
-      matrix:
-        runner: [ubuntu-latest, ubuntu-22.04-arm]
-    runs-on: ${{matrix.runner}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Set up Ruby 3.1
@@ -21,13 +18,65 @@ jobs:
         run: tmp/mruby/build/host/bin/theorize --require="mrblib/barista.rb" test
       - uses: actions/upload-artifact@v4
         with:
-          name: barista-bootstrap-${{matrix.runner}}
+          name: barista-bootstrap-x86
           path: tmp/mruby/build/host/bin/barista
+          overwrite: true
+  compile-and-test-arm64:
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby 3.1
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+      - name: build
+        run: ruby setup.rb
+      - name: test
+        run: tmp/mruby/build/host/bin/theorize --require="mrblib/barista.rb" test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-bootstrap-arm64
+          path: tmp/mruby/build/host/bin/barista
+          overwrite: true
+  publish-arm64:
+    needs: compile-and-test-arm64
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --shm-size=2g
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+    runs-on: ubuntu-22.04-arm
+    container:
+      image: ubuntu:latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: barista-bootstrap-x86
+      # docker build here.
+      - name: install docker
+        run: |
+          apt-get update -y && apt-get install -y ca-certificates curl
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+            tee /etc/apt/sources.list.d/docker.list > /dev/null
+          apt-get update -y
+          apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+      - name: build docker linux
+        run: export DOCKER_BUILDKIT=1 && chmod 755 barista && ./barista linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: barista-linux-arm64
+          path: platforms/linux/barista*
           overwrite: true
   publish:
     strategy:
       matrix:
-        runner: [ubuntu-latest, ubuntu-22.04-arm]
         platform: [linux, osx, windows]
     needs: compile-and-test
     services:
@@ -36,14 +85,14 @@ jobs:
         options: --privileged --shm-size=2g
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock:ro
-    runs-on: ${{matrix.runner}}
+    runs-on: ubuntu-latest
     container:
       image: ubuntu:latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
-          name: barista-bootstrap-${{matrix.runner}}
+          name: barista-bootstrap-x86
       # docker build here.
       - name: install docker
         run: |
@@ -61,7 +110,7 @@ jobs:
         run: export DOCKER_BUILDKIT=1 && chmod 755 barista && ./barista ${{matrix.platform}}
       - uses: actions/upload-artifact@v4
         with:
-          name: barista-${{matrix.platform}}-${{matrix.runner}}
+          name: barista-${{matrix.platform}}-x86
           path: platforms/${{matrix.platform}}/barista*
           overwrite: true
   release:
@@ -75,12 +124,10 @@ jobs:
         pattern: barista*
     - name: zip artifacts
       run: |
-        tar -czvf barista-linux-x86.tar.gz barista-linux-ubuntu-latest
-        tar -czvf barista-osx-x86.tar.gz barista-osx-ubuntu-latest
-        tar -czvf barista-windows-x86.tar.gz barista-windows-ubuntu-latest
-        tar -czvf barista-linux-x86.tar.gz barista-linux-ubuntu-22.04-arm
-        tar -czvf barista-osx-x86.tar.gz barista-osx-ubuntu-22.04-arm
-        tar -czvf barista-windows-x86.tar.gz barista-ubuntu-22.04-arm
+        tar -czvf barista-linux-x86.tar.gz barista-linux-x86
+        tar -czvf barista-osx-x86.tar.gz barista-osx-x86
+        tar -czvf barista-windows-x86.tar.gz barista-windows-x86
+        tar -czvf barista-linux-arm64.tar.gz barista-linux-arm64
     - uses: ncipollo/release-action@v1
       with:
         artifacts: "barista*"

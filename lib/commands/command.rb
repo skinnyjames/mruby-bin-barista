@@ -2,7 +2,7 @@ module Barista
   module Commands
     class Command < Base
       attr_reader :command, :chdir, :shell, :env
-      
+
       def initialize(command, chdir: nil, shell: nil, env: {})
         @command = command
         @chdir = chdir
@@ -34,7 +34,6 @@ module Barista
               break
             rescue StandardError => ex
               Fiber.yield
-              puts "WTF: #{ex}"
             end
           end
         end
