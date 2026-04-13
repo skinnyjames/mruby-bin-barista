@@ -1394,7 +1394,7 @@ module Barista
       end
     end
 
-    attr_reader :name, :registry, :gems, :tasks, :config, :root, :path
+    attr_reader :name, :registry, :gems, :tasks, :config, :root, :path, :recipes
 
     def initialize(name, config, path = ".", registry = Barista::Registry.new)
       @name = name
@@ -1404,6 +1404,7 @@ module Barista
       @config = config
       @path = path
       @root = Barista::Task.new("#{name}-task-root")
+      @recipes = {}
     end
 
     def scan_args(str)
@@ -1450,9 +1451,20 @@ module Barista
       end
 
       argstr.split(" ").each do |foo|
-        args = scan_args(foo)
+        if foo =~ /^@/
+          args = recipes[foo.gsub(/^@/, '')]
+          raise Barista::Error.new("No recipe #{foo} found for #{name}") if args.nil?
+
+          if ENV["LOG_LEVEL"] == "debug"
+            puts "Recipe #{foo} found! - #{args}"
+          end
+        else
+          args = scan_args(foo)
+        end
+
         args.each do |(task, hash)|
-          tasks[task] = hash
+          tasks[task] ||= {}
+          tasks[task].merge!(hash)
         end
       end
 
@@ -1536,6 +1548,13 @@ module Barista
           fiber.resume
           fibers << fiber
         end
+      end
+    end
+
+    def recipe(key, value)
+      @recipes[key] = value.split(" ").inject([]) do |memo, v| 
+        memo.concat scan_args(v)
+        memo
       end
     end
 

@@ -9,7 +9,7 @@ NOTE: this project is beta.  Actively accepting feedback and contributions.
 features:
 
 * file tracking
-* argument handling
+* argument handling and recipes for common arguments
 * rudiumentary handling for local and remote imports
 
 # about
@@ -145,8 +145,32 @@ new-barista-project::brew - running command: echo 'all done!!'
 new-barista-project::brew - all done!!
 new-barista-project::brew did the damn thing
 ```
+### groups
 
-## imports
+Each task in a `Brewfile` will receive its own arguments.
+
+`barista brew:times=2 grind:type=robusta`
+
+Arguments can be grouped for multiple tasks by delimiting the tasks with a comma `,`
+
+`barista brew,grind:times=2:type=robusta`
+
+### recipes
+
+Remembering all the permutations of arguments can be cumbersome, so the `Brewfile` can describe common recipes
+
+```ruby
+spec("new-barista-project") do |config|
+  recipe "strong", "brew:times=2"
+  recipe "popular", "brew,grind:times=1:type=liberica"
+
+  # ...
+end
+```
+
+The recipe can now be invoked as `barista @popular`
+
+## imports (wip)
 
 an rough idea is to resolve imports via git/http/filesystem
 

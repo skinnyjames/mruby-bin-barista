@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+* Adds recipes idea to `Brewfile`
+
 ## 0.3.0
 
 * Adds better cli argument handling and dependency tracking
