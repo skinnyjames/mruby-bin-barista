@@ -21,6 +21,7 @@ MRuby::CrossBuild.new("windows") do |conf|
   conf.cc.command = "#{conf.host_target}-gcc-posix"
   conf.cc.flags += %w[-O2]
   conf.linker.command = conf.cc.command
+  conf.linker.flags += %w[-static]
   conf.archiver.command = "#{conf.host_target}-gcc-ar"
   conf.exts.executable = ".exe"
   conf.gem github: "skinnyjames-mruby/mruby-dir-glob", canonical: true

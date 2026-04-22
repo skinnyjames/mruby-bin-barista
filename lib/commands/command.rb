@@ -13,13 +13,16 @@ module Barista
       def execute
         on_output.call("running command: #{command}")
         dir = chdir || "."
-        if windows? && !shell
+
+        case shell
+        when "powershell"
           cmd = "powershell.exe -Command \"cd #{dir}; #{command}\""
-        elsif shell
-          cmd = "#{shell} -c \"cd #{dir}; #{command}\""
-        else
+        when nil
           cmd = "cd #{dir}; #{command}"
+        else
+          cmd = "#{shell} -c \"cd #{dir}; #{command}\""
         end
+
         IO.popen(cmd, File::NONBLOCK | File::RDONLY) do |io|
           io.nonblock!
           loop do
