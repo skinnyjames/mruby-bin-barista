@@ -206,7 +206,7 @@ module Barista
       end
 
       orchestrator.on_unblocked do |unblock|
-        if ENV.to_hash["LOG_LEVEL"] == "debug"
+        if ENV["LOG_LEVEL"] == "debug"
           puts unblock.to_s
         end
       end
